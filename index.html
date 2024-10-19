@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Video with Music</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+
+        .page {
+            display: none;
+            text-align: center;
+            height: 100vh;
+            width: 100vw;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .page.active {
+            display: flex;
+        }
+
+        #landingPage {
+            background-image: url('bg.jpg');
+            background-size: cover;
+        }
+
+        #videoPage {
+            position: relative;
+            background-color: black;
+        }
+
+        #bgVideo {
+            width: 100%;
+            height: auto;
+            max-height: 80vh;
+        }
+
+        #startButton, #prevButton, #nextButton, #showTextButton, #goButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+        }
+
+        #startButton { background-color: #4CAF50; } /* Hijau */
+        #prevButton { background-color: #C71585; } /* Kuning */
+        #nextButton { background-color: #C71585; } /* Merah */
+        #showTextButton { background-color: #9C27B0; } /* Ungu */
+        #goButton { background-color: #00bcd4; } /* Biru muda */
+
+        .hidden {
+            display: none;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        #videoControls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        #textOverlay {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 20px;
+            border-radius: 20px;
+            background-color: white;
+            color: black;
+            font-size: 18px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            min-width: 200px;
+            max-width: 300px;
+        }
+
+        /* Loading screen */
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Halaman Go -->
+    <div id="goPage" class="page active">
+        <h1>Siap Mulai?</h1>
+        <button id="goButton">Go</button>
+    </div>
+
+    <!-- Halaman Persetujuan -->
+    <div id="landingPage" class="page">
+        <h1>Selamat Datang</h1>
+        <p>Untuk melanjutkan, silakan setujui syarat dan ketentuan.</p>
+        <input type="checkbox" id="agreeCheckbox"> Saya setuju
+        <button id="proceedButton" disabled>Lanjut</button>
+    </div>
+
+    <!-- Halaman Utama dengan Video -->
+    <div id="videoPage" class="page">
+        <video id="bgVideo" class="hidden" loop autoplay></video>
+        <button id="startButton" class="hidden">Mulai</button>
+        <div id="videoControls" class="hidden">
+            <div class="navigation">
+                <button id="prevButton">⏎</button>
+                <button id="nextButton">➣</button>
+            </div>
+            <button id="showTextButton">Lihat Kata</button>
+        </div>
+        <div id="textOverlay" class="hidden">Kata-kata akan ditampilkan di sini...</div>
+    </div>
+
+    <!-- Loading screen -->
+    <div id="loading">Loading...</div>
+
+    <audio id="backgroundMusic" loop>
+        <source src="rera.mp3" type="audio/mp3">
+    </audio>
+
+    <script>
+        const proceedButton = document.getElementById('proceedButton');
+        const agreeCheckbox = document.getElementById('agreeCheckbox');
+        const landingPage = document.getElementById('landingPage');
+        const videoPage = document.getElementById('videoPage');
+        const goPage = document.getElementById('goPage');
+        const startButton = document.getElementById('startButton');
+        const bgVideo = document.getElementById('bgVideo');
+        const prevButton = document.getElementById('prevButton');
+        const nextButton = document.getElementById('nextButton');
+        const showTextButton = document.getElementById('showTextButton');
+        const textOverlay = document.getElementById('textOverlay');
+        const loadingScreen = document.getElementById('loading');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const goButton = document.getElementById('goButton');
+
+        let currentVideoIndex = 0;
+        const videos = [
+            { src: '1.mp4', text: 'Move on adalah hal yang sederhana, apa yang ditinggalkan itu sulit.20.10.24.', color: '#FF0000' }, // Merah
+            { src: '2.mp4', text: 'Jatuh cinta pada seseorang bisa dengan cara yang sederhana.20.10.24.', color: '#00FF00' }, // Hijau
+            { src: '3.mp4', text: 'Apa pun badai yang Anda hadapi, Tuhan mengasihi Anda.20.10.24.', color: '#0000FF' }, // Biru
+            { src: '4.mp4', text: 'Mulut tidak mengatakan, tapi hati berteriak bahwa aku mencintaimu.20.10.24.', color: '#FFFF00' }, // Kuning
+            { src: '5.mp4', text: 'Semua itu menjadi kenangan, kita akan melupakan.20.10.24.', color: '#FF00FF' }  // Ungu
+        ];
+
+        // Enable the proceed button only when the checkbox is checked
+        agreeCheckbox.addEventListener('change', () => {
+            proceedButton.disabled = !agreeCheckbox.checked;
+        });
+
+        // Play background music and show landing page when "Go" button is clicked
+        goButton.addEventListener('click', () => {
+            backgroundMusic.play();
+            goPage.classList.remove('active');
+            landingPage.classList.add('active');
+        });
+
+        // Navigate to video page when proceed button is clicked
+        proceedButton.addEventListener('click', () => {
+            landingPage.classList.remove('active');
+            loadingScreen.style.display = 'flex';
+
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+                videoPage.classList.add('active');
+                backgroundMusic.pause(); // Stop music when video starts
+                startButton.classList.remove('hidden');
+            }, 2000); // Simulate 2 seconds loading
+        });
+
+        // Show video controls and load the first video when start button is clicked
+        startButton.addEventListener('click', () => {
+            startButton.classList.add('hidden');
+            bgVideo.classList.remove('hidden');
+            loadVideo(currentVideoIndex);
+        });
+
+        // Navigate to the previous video
+        prevButton.addEventListener('click', () => {
+            currentVideoIndex = (currentVideoIndex - 1 + videos.length) % videos.length;
+            loadVideo(currentVideoIndex);
+        });
+
+        // Navigate to the next video
+        nextButton.addEventListener('click', () => {
+            currentVideoIndex = (currentVideoIndex + 1) % videos.length;
+            loadVideo(currentVideoIndex);
+        });
+
+        // Show the text overlay for the current video
+        showTextButton.addEventListener('click', () => {
+            textOverlay.textContent = videos[currentVideoIndex].text;
+            textOverlay.style.display = 'flex'; // Show text overlay
+            setTimeout(() => {
+                textOverlay.style.display = 'none'; // Hide after 5 seconds
+            }, 5000);
+        });
+
+        // Load the video based on the current index
+        function loadVideo(index) {
+            bgVideo.src = videos[index].src;
+            bgVideo.play(); // Play video
+        }
+    </script>
+</body>
+</html>
